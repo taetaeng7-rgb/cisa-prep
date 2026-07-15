@@ -1,0 +1,8 @@
+# 저작물·비밀값 유입 차단 (§1.8)
+*.pdf
+*.png
+.env
+.DS_Store
+# 평문 문항 JSON 금지 — 암호화 번들(.enc)만 허용
+data/*.json
+data/questions/
