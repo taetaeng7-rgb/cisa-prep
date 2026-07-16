@@ -26,6 +26,11 @@ if (existsSync('data/questions.enc')) {
   // 엔트로피 대략 체크: 앞부분에 '{' '한글' JSON 흔적 없어야
   if (buf.slice(0, 200).includes(Buffer.from('"question"'))) bad('G02 questions.enc 안에 평문 흔적');
 } else bad('G02 data/questions.enc 없음 — 먼저 암호화');
+if (existsSync('data/concepts.enc')) {
+  const cb = readFileSync('data/concepts.enc');
+  if (cb.slice(0, 8).toString('latin1') !== 'CISAENC1') bad('G02 concepts.enc 매직 헤더 불일치');
+  if (cb.slice(0, 200).includes(Buffer.from('"sections"'))) bad('G02 concepts.enc 안에 평문 흔적');
+}
 
 // G03: 비밀값·PDF
 if (files.some((f) => /\.env$/.test(f))) bad('G03 .env 추적됨');

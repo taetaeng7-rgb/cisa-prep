@@ -31,7 +31,71 @@ const bar = (pct, color) => `<span class="bar"><span style="width:${pct ?? 0}%;b
 
 export function tabbar(active) {
   const t = (href, icon, label, key) => `<a class="tab${active === key ? ' on' : ''}" data-action="go" data-href="${href}"><span>${icon}</span>${label}</a>`;
-  return `<nav class="tabbar">${t('#/', '🏠', '홈', 'home')}${t('#/review', '📕', '오답', 'review')}${t('#/exam', '⏱', '모의', 'exam')}</nav>`;
+  return `<nav class="tabbar">${t('#/', '🏠', '홈', 'home')}${t('#/concepts', '📖', '개념', 'concepts')}${t('#/review', '📕', '오답', 'review')}${t('#/exam', '⏱', '모의', 'exam')}</nav>`;
+}
+
+// 마크다운 렌더러(개념 리더용): 헤딩·목록·인용·표·굵게 지원, 전부 이스케이프
+export function renderMd(md) {
+  const inline = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+  const lines = String(md ?? '').split('\n');
+  let html = '', i = 0, para = [], list = null;
+  const flushPara = () => { if (para.length) { html += `<p>${para.map(inline).join('<br>')}</p>`; para = []; } };
+  const flushList = () => { if (list) { html += `<${list.tag}>` + list.items.map((x) => `<li>${inline(x)}</li>`).join('') + `</${list.tag}>`; list = null; } };
+  while (i < lines.length) {
+    const line = lines[i];
+    const h = line.match(/^(#{1,6})\s+(.+)/);
+    if (h) { flushPara(); flushList(); const lv = Math.min(h[1].length + 2, 6); html += `<h${lv}>${inline(h[2])}</h${lv}>`; i++; continue; }
+    if (line.includes('|') && lines[i + 1] && /^\s*\|?[\s:|-]+\|?\s*$/.test(lines[i + 1])) {
+      flushPara(); flushList();
+      const cell = (r) => r.replace(/^\s*\|/, '').replace(/\|\s*$/, '').split('|').map((c) => c.trim());
+      const head = cell(line); i += 2; const rows = [];
+      while (i < lines.length && lines[i].includes('|')) { rows.push(cell(lines[i])); i++; }
+      html += '<div class="tbl-wrap"><table><thead><tr>' + head.map((x) => `<th>${inline(x)}</th>`).join('') + '</tr></thead><tbody>'
+        + rows.map((r) => '<tr>' + r.map((c) => `<td>${inline(c)}</td>`).join('') + '</tr>').join('') + '</tbody></table></div>';
+      continue;
+    }
+    const li = line.match(/^\s*(?:[-•*]|\d+[.)])\s+(.+)/);
+    if (li) { flushPara(); const tag = /^\s*\d/.test(line) ? 'ol' : 'ul'; if (!list || list.tag !== tag) { flushList(); list = { tag, items: [] }; } list.items.push(li[1]); i++; continue; }
+    if (/^\s*>\s?/.test(line)) { flushPara(); flushList(); html += `<blockquote>${inline(line.replace(/^\s*>\s?/, ''))}</blockquote>`; i++; continue; }
+    if (line.trim() === '') { flushPara(); flushList(); } else { para.push(line); }
+    i++;
+  }
+  flushPara(); flushList();
+  return html;
+}
+
+export function conceptChapters({ chapters }) {
+  const cards = [1, 2, 3, 4, 5].map((n) => {
+    const c = chapters.find((x) => x.ch === n);
+    const d = domainMeta(n);
+    return c
+      ? `<button class="dcard" data-action="go" data-href="#/concepts/${n}">
+          <span class="dtag" style="background:${d.color}">D${n}</span>
+          <span class="dname">${esc(c.title)}</span>
+          <span class="dmeta">${c.sections.length}개 섹션 · Review Manual Ch.${n}</span></button>`
+      : `<button class="dcard off"><span class="dtag" style="background:${d.color}">D${n}</span>
+          <span class="dname">${esc(d.name)}</span><span class="dmeta">추출 예정</span></button>`;
+  }).join('');
+  return `<header class="top"><h1>개념 (Review Manual)</h1></header>
+    <main class="home"><div class="dgrid">${cards}</div>
+    <p class="muted small" style="padding:0 16px">개인 학습용 참고 자료입니다.</p></main>${tabbar('concepts')}`;
+}
+
+export function conceptSections({ chapter }) {
+  const items = chapter.sections.map((s, i) =>
+    `<button class="ritem sec-item" data-action="go" data-href="#/concepts/${chapter.ch}/${i}">${esc(s.t || `섹션 ${i + 1}`)}</button>`).join('');
+  return `<header class="top"><button class="ghost" data-action="go" data-href="#/concepts">‹</button><h1>Ch.${chapter.ch} ${esc(chapter.title)}</h1></header>
+    <main class="review"><div class="rlist">${items}</div></main>${tabbar('concepts')}`;
+}
+
+export function conceptReader({ chapter, idx }) {
+  const s = chapter.sections[idx];
+  const nav = `<div class="runner-foot two">
+      ${idx > 0 ? `<button class="ghost" data-action="go" data-href="#/concepts/${chapter.ch}/${idx - 1}">← 이전</button>` : '<span></span>'}
+      ${idx + 1 < chapter.sections.length ? `<button class="ghost" data-action="go" data-href="#/concepts/${chapter.ch}/${idx + 1}">다음 →</button>` : '<span></span>'}
+    </div>`;
+  return `<header class="top"><button class="ghost" data-action="go" data-href="#/concepts/${chapter.ch}">‹</button><h1 class="reader-title">${esc(s.t || `Ch.${chapter.ch}`)}</h1></header>
+    <main class="reader">${renderMd(s.md)}${nav}</main>${tabbar('concepts')}`;
 }
 
 export function unlockScreen(errMsg) {

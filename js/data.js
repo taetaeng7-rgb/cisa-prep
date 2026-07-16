@@ -39,6 +39,20 @@ export async function unlock(passphrase) {
   return true;
 }
 
+// 개념(RM) 번들 — 같은 salt/키를 쓰므로 캐시 키로 자동 복호(지연 로드)
+let _concepts = null;
+export async function loadConcepts() {
+  if (_concepts) return _concepts;
+  const res = await fetch('data/concepts.enc', { cache: 'no-store' });
+  if (!res.ok) throw new Error('NO_CONCEPTS');
+  const buf = await res.arrayBuffer();
+  const p = await unlockWithCache(buf);
+  if (!p) throw new Error('LOCKED');
+  _concepts = p;
+  return _concepts;
+}
+export const concepts = () => _concepts;
+
 export const isLoaded = () => !!_payload;
 export const meta = () => ({ version: _payload?.version, counts: _payload?.counts || {}, builtDomains: _payload?.builtDomains || [] });
 export const allQuestions = () => _payload?.questions || [];

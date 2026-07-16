@@ -137,3 +137,14 @@ th{background:var(--surface2)}
 .qbtn.danger{color:var(--no)}
 .qbtn small{font-weight:400}
 .drow small{font-weight:400;font-size:12px}
+
+/* 개념 리더 */
+.reader{padding:16px;font-size:15.5px;line-height:1.75}
+.reader h3,.reader h4,.reader h5,.reader h6{margin:20px 0 8px;line-height:1.4}
+.reader h3{font-size:19px}.reader h4{font-size:17px}.reader h5{font-size:15.5px;color:var(--primary)}
+.reader p{margin:0 0 12px}
+.reader ul,.reader ol{margin:0 0 12px;padding-left:22px}
+.reader li{margin-bottom:4px}
+.reader blockquote{margin:0 0 12px;padding:10px 14px;background:var(--surface);border-left:3px solid var(--primary);border-radius:0 8px 8px 0;color:var(--muted)}
+.reader-title{font-size:16px;flex:1;margin:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sec-item{display:block;width:100%;text-align:left;font-size:15px}

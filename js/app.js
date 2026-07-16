@@ -134,6 +134,23 @@ route('/stats', () => ensureLoaded(() => {
   mount(V.statsScreen({ ov: S.overall(qs, h), dstats: S.domainStats(qs, h), weak: S.weakTopics(qs, h), streak: S.streak(store.getActivity()) }));
 }));
 route('/settings', () => mount(V.settingsScreen({ settings: store.getSettings() })));
+// 개념(RM) 리더 — 문항 번들 언록 후 같은 키로 지연 로드
+async function ensureConcepts(render) {
+  return ensureLoaded(async () => {
+    try { await data.loadConcepts(); render(); }
+    catch (e) { mount(V.errorScreen(e.message === 'NO_CONCEPTS' ? '개념 자료가 아직 없습니다.' : '개념 자료를 불러오지 못했습니다 — 새로고침 해주세요.')); }
+  });
+}
+route('/concepts', () => ensureConcepts(() => mount(V.conceptChapters({ chapters: data.concepts().chapters }))));
+route('/concepts/:ch', (p) => ensureConcepts(() => {
+  const chapter = data.concepts().chapters.find((c) => c.ch === Number(p.ch));
+  chapter ? mount(V.conceptSections({ chapter })) : go('#/concepts');
+}));
+route('/concepts/:ch/:idx', (p) => ensureConcepts(() => {
+  const chapter = data.concepts().chapters.find((c) => c.ch === Number(p.ch));
+  const idx = Number(p.idx);
+  chapter && chapter.sections[idx] ? mount(V.conceptReader({ chapter, idx })) : go('#/concepts');
+}));
 route('/study/:domain', (p) => ensureLoaded(() => {
   const d = p.domain;
   const pool = d === 'all' ? data.allQuestions() : data.byDomain(Number(d));
