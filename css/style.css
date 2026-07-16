@@ -131,6 +131,9 @@ th{background:var(--surface2)}
 .srow{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
 .srow input,.srow select{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:15px}
 .chip-btn{background:var(--surface2);padding:6px 14px;border-radius:20px}
+.reset-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rbtn{background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:12px 4px;font-weight:700;font-size:14px}
+.rbtn.danger{border-color:var(--no);color:var(--no)}
 .qbtn.danger{color:var(--no)}
 .qbtn small{font-weight:400}
 .drow small{font-weight:400;font-size:12px}

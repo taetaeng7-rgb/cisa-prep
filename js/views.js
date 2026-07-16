@@ -103,10 +103,16 @@ export function settingsScreen({ settings }) {
         <select data-action="set-setsize">${[5, 10, 20].map((n) => `<option value="${n}"${settings.setSize === n ? ' selected' : ''}>${n}문</option>`).join('')}</select>
       </label>
       <div class="srow"><span>테마</span><button class="chip-btn" data-action="toggle-theme">${settings.theme}</button></div>
+      <h3 class="sec">풀이 기록 초기화 (정답률 리셋 — 플래그는 유지)</h3>
+      <div class="reset-grid">
+        ${DOMAINS.map((d) => `<button class="rbtn" style="border-color:${d.color};color:${d.color}" data-action="reset-history" data-domain="${d.id}">D${d.id} ${d.short}</button>`).join('')}
+        <button class="rbtn danger" data-action="reset-history" data-domain="all">전체 기록</button>
+      </div>
+      <p class="muted small">도메인을 처음부터 다시 풀 때(2회독) 사용하세요. 진행 중이던 세트·모의는 종료됩니다.</p>
       <h3 class="sec">데이터</h3>
       <button class="qbtn" data-action="export">⬇ 학습 이력 내보내기(JSON)</button>
       <label class="qbtn" style="cursor:pointer">⬆ 가져오기<input type="file" accept="application/json" data-action="import" hidden></label>
-      <button class="qbtn danger" data-action="reset">🗑 전체 초기화</button>
+      <button class="qbtn danger" data-action="reset">🗑 전체 초기화 (설정·플래그 포함 모든 데이터)</button>
       <p class="muted small" style="margin-top:16px">학습 이력은 이 기기에만 저장됩니다. 기기를 바꾸기 전 내보내기로 백업하세요.</p>
     </main>${tabbar('home')}`;
 }

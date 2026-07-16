@@ -42,6 +42,21 @@ export function importData(obj) {
   if (!obj || obj._app !== 'cisa-prep' || !obj.data) throw new Error('형식이 올바르지 않습니다');
   Object.entries(obj.data).forEach(([k, v]) => { if (k.startsWith(P)) localStorage.setItem(k, v); });
 }
+// 풀이 기록 초기화(정답률 리셋) — domain: 1~5 또는 'all'. 플래그(🚩)는 보존.
+export function resetHistory(domain = 'all') {
+  const h = getHistory();
+  const match = (id) => domain === 'all' || id.startsWith(`d${domain}-`);
+  Object.keys(h).forEach((id) => {
+    if (!match(id)) return;
+    if (h[id].flag) h[id] = { a: 0, c: 0, last: null, at: 0, flag: true }; // 플래그만 유지
+    else delete h[id];
+  });
+  set('history', h);
+  // 진행 중이던 세트/모의도 기록 정합성을 위해 함께 종료
+  clearSession('study'); clearSession('exam');
+  if (domain === 'all') del('activity'); // 전체 리셋 시 스트릭도 초기화
+}
+
 export function resetAll() {
   Object.keys(localStorage).filter((k) => k.startsWith(P)).forEach((k) => localStorage.removeItem(k));
 }

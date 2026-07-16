@@ -189,6 +189,17 @@ app.addEventListener('click', (e) => {
     case 'start-review': { const items = S.wrongList(data.allQuestions(), store.getHistory()); if (items.length) buildRunner('review', items, '오답', null); break; }
     case 'start-flagged': { const items = S.flaggedList(data.allQuestions(), store.getHistory()); if (items.length) buildRunner('flagged', items, '플래그', null); else go('#/'); break; }
     case 'export': { const blob = new Blob([JSON.stringify(store.exportData(), null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `cisa-prep-backup-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); break; }
+    case 'reset-history': {
+      const d = el.dataset.domain;
+      const label = d === 'all' ? '전체' : `D${d}`;
+      if (confirm(`${label} 풀이 기록(정답률)을 초기화할까요? 플래그는 유지되며, 되돌릴 수 없습니다.`)) {
+        store.resetHistory(d === 'all' ? 'all' : Number(d));
+        run = null; exam = null; clearInterval(timer);
+        alert(`${label} 기록을 초기화했습니다.`);
+        go('#/'); resolve();
+      }
+      break;
+    }
     case 'reset': if (confirm('학습 이력을 전부 삭제할까요? 되돌릴 수 없습니다.')) { store.resetAll(); go('#/'); resolve(); } break;
     case 'start-exam': buildExam(); break;
     case 'exam-answer': exam.answers[exam.ids[exam.pos]] = Number(el.dataset.disp); store.saveSession('exam', exam); renderExam(); break;
