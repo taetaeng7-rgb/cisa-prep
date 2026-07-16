@@ -44,7 +44,7 @@ export function unlockScreen(errMsg) {
   </div></div>`;
 }
 
-export function homeScreen({ counts, stats, resume, reviewCount }) {
+export function homeScreen({ counts, stats, resume, reviewCount, flaggedCount, streak, dday, total, seen }) {
   const cards = DOMAINS.map((d) => {
     const n = counts[d.id] || 0;
     const s = stats[d.id] || {};
@@ -59,15 +59,55 @@ export function homeScreen({ counts, stats, resume, reviewCount }) {
   }).join('');
   const resumeHtml = resume
     ? `<button class="resume" data-action="resume-${resume.kind}">▶ 이어하기 — ${resume.label}</button>` : '';
-  return `<header class="top"><h1>cisa-prep</h1><button class="ghost" data-action="toggle-theme">🌓</button></header>
+  const ddayHtml = dday != null
+    ? `<span class="dday">${dday > 0 ? `시험 D-${dday}` : dday === 0 ? '시험 D-DAY' : `시험 D+${-dday}`}</span>` : '';
+  return `<header class="top"><h1>cisa-prep</h1>
+      <div class="top-actions">${ddayHtml}<button class="ghost" data-action="go" data-href="#/settings">⚙️</button><button class="ghost" data-action="toggle-theme">🌓</button></div>
+    </header>
     <main class="home">
+      <div class="statline">🔥 ${streak}일 연속 · 푼 ${seen}/${total}문</div>
       ${resumeHtml}
       <h2 class="sec">도메인</h2>
       <div class="dgrid">${cards}</div>
       <div class="quick">
         <button class="qbtn" data-action="go" data-href="#/review">📕 오답노트 <b>${reviewCount}</b></button>
+        <button class="qbtn" data-action="start-flagged">🚩 플래그 다시 풀기 <b>${flaggedCount}</b></button>
+        <button class="qbtn" data-action="go" data-href="#/stats">📊 통계</button>
         <button class="qbtn" data-action="go" data-href="#/exam">⏱ 미니 모의 25문</button>
       </div>
+    </main>${tabbar('home')}`;
+}
+
+export function statsScreen({ ov, dstats, weak, streak }) {
+  const drows = DOMAINS.map((d) => {
+    const s = dstats[d.id];
+    return `<div class="drow"><span>D${d.id} ${d.short}</span>${bar(s.accuracy, d.color)}<b>${s.accuracy == null ? '–' : s.accuracy + '%'} <small class="muted">${s.seen}/${s.total}</small></b></div>`;
+  }).join('');
+  const weakHtml = weak.length
+    ? weak.map((t) => `<div class="ritem"><span class="dtag sm" style="background:${domainMeta(t.domain).color}">D${t.domain}</span>${esc(t.topic)} — <b>${t.accuracy}%</b> <small class="muted">(${t.seen}문)</small></div>`).join('')
+    : '<p class="muted small">토픽 데이터가 아직 없습니다(문항을 더 풀거나 토픽 분류 반영 후 표시).</p>';
+  return `<header class="top"><h1>통계</h1></header>
+    <main class="result">
+      <div class="score">${ov.accuracy == null ? '–' : ov.accuracy + '%'} <span class="muted">전체 정답률</span></div>
+      <p class="muted" style="text-align:center">🔥 ${streak}일 연속 · 푼 ${ov.seen}/${ov.total}문</p>
+      <h3 class="sec">도메인별</h3><div class="drows">${drows}</div>
+      <h3 class="sec">약점 토픽 (정답률 낮은 순)</h3><div class="rlist">${weakHtml}</div>
+    </main>${tabbar('home')}`;
+}
+
+export function settingsScreen({ settings }) {
+  return `<header class="top"><h1>설정</h1><button class="ghost" data-action="go" data-href="#/">✕</button></header>
+    <main class="settings">
+      <label class="srow"><span>시험일</span><input type="date" data-action="set-examdate" value="${esc(settings.examDate || '')}"></label>
+      <label class="srow"><span>세트 크기</span>
+        <select data-action="set-setsize">${[5, 10, 20].map((n) => `<option value="${n}"${settings.setSize === n ? ' selected' : ''}>${n}문</option>`).join('')}</select>
+      </label>
+      <div class="srow"><span>테마</span><button class="chip-btn" data-action="toggle-theme">${settings.theme}</button></div>
+      <h3 class="sec">데이터</h3>
+      <button class="qbtn" data-action="export">⬇ 학습 이력 내보내기(JSON)</button>
+      <label class="qbtn" style="cursor:pointer">⬆ 가져오기<input type="file" accept="application/json" data-action="import" hidden></label>
+      <button class="qbtn danger" data-action="reset">🗑 전체 초기화</button>
+      <p class="muted small" style="margin-top:16px">학습 이력은 이 기기에만 저장됩니다. 기기를 바꾸기 전 내보내기로 백업하세요.</p>
     </main>${tabbar('home')}`;
 }
 
@@ -88,6 +128,7 @@ export function questionCard({ q, order, pos, size, chosen, flagged, label }) {
       <div class="expl-head">${order[chosen] === q.answer ? '<span class="ok">✅ 정답</span>' : '<span class="no">✗ 오답</span>'} · 정답 ${LETTERS[order.indexOf(q.answer)]}</div>
       ${q.explanationTitle ? `<div class="expl-title">${esc(q.explanationTitle)}</div>` : ''}
       ${renderRich(q.explanation.ko)}
+      ${q.explanationPlus ? `<details class="plus"><summary>📘 보강 해설 (Review Manual)</summary>${renderRich(q.explanationPlus.ko)}<div class="ref">근거: ${esc(q.explanationPlus.ref || 'RM27')}</div></details>` : ''}
       <div class="ref">📄 ${esc(q.ref)}${q.srcId ? ` · ${esc(q.srcId)}` : ''}</div>
     </div>
     <div class="runner-foot"><button class="next" data-action="next">${pos + 1 < size ? '다음 →' : '결과 보기'}</button></div>` : '';

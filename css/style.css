@@ -78,6 +78,9 @@ b{font-weight:700}
 .expl-title{font-weight:700;color:var(--primary);margin-bottom:6px}
 .expl p{margin:0 0 8px}
 .ref{margin-top:10px;font-size:13px;color:var(--muted);background:var(--surface2);display:inline-block;padding:4px 10px;border-radius:8px}
+.plus{margin-top:12px;border:1px solid var(--line);border-radius:10px;padding:0 12px;background:var(--bg)}
+.plus summary{cursor:pointer;font-weight:600;padding:12px 0;color:var(--primary)}
+.plus p{margin:0 0 8px}
 .tbl-wrap{overflow-x:auto;margin:8px 0}
 table{border-collapse:collapse;width:100%;font-size:13px}
 th,td{border:1px solid var(--line);padding:6px 8px;text-align:left}
@@ -116,3 +119,18 @@ th{background:var(--surface2)}
 .primary[data-action]{margin-bottom:12px}
 .empty{text-align:center;padding:60px 20px;color:var(--muted)}
 .empty button{margin-top:14px;background:var(--primary);color:#fff;padding:12px 20px;border-radius:12px}
+
+/* 홈 추가 */
+.top-actions{display:flex;align-items:center;gap:6px}
+.dday{background:var(--no);color:#fff;font-size:12px;font-weight:700;padding:4px 10px;border-radius:20px}
+.statline{margin:4px 16px 0;color:var(--muted);font-size:13px}
+.quick{gap:8px}
+
+/* 설정 */
+.settings{padding:16px;display:flex;flex-direction:column;gap:10px}
+.srow{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px}
+.srow input,.srow select{background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:8px;font-size:15px}
+.chip-btn{background:var(--surface2);padding:6px 14px;border-radius:20px}
+.qbtn.danger{color:var(--no)}
+.qbtn small{font-weight:400}
+.drow small{font-weight:400;font-size:12px}

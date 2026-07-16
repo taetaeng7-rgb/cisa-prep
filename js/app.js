@@ -32,7 +32,8 @@ async function ensureLoaded(render) {
 // ---------- 학습/오답 러너 ----------
 function buildRunner(kind, pool, label, domain) {
   const rng = E.makeRng((Date.now() ^ (pool.length * 2654435761)) >>> 0);
-  const picked = kind === 'review' ? pool : E.pickQuestions(pool, SET_SIZE, store.getHistory(), rng);
+  const size = store.getSettings().setSize || SET_SIZE;
+  const picked = (kind === 'review' || kind === 'flagged') ? pool : E.pickQuestions(pool, size, store.getHistory(), rng);
   const orders = {}; picked.forEach((q) => (orders[q.id] = E.choiceOrder(q, rng)));
   run = { kind, domain, label, ids: picked.map((q) => q.id), orders, pos: 0, chosen: null, correct: 0, wrong: [] };
   store.saveSession('study', run);
@@ -108,16 +109,31 @@ function submitExam() {
 }
 
 // ---------- 라우트 ----------
+function ddayFrom(examDate) {
+  if (!examDate) return null;
+  const d = Math.ceil((new Date(examDate + 'T00:00:00') - new Date(new Date().toISOString().slice(0, 10) + 'T00:00:00')) / 86400000);
+  return d;
+}
 route('/', () => ensureLoaded(() => {
-  const qs = data.allQuestions();
-  const stats = S.domainStats(qs, store.getHistory());
+  const qs = data.allQuestions(); const h = store.getHistory();
+  const stats = S.domainStats(qs, h);
   const sd = store.getSession('study'), se = store.getSession('exam');
   let resume = null;
   if (sd) resume = { kind: 'study', label: `${sd.label} ${sd.pos + 1}/${sd.ids.length}` };
   else if (se) resume = { kind: 'exam', label: `모의 진행 중` };
-  const reviewCount = S.wrongList(qs, store.getHistory()).length;
-  mount(V.homeScreen({ counts: data.meta().counts, stats, resume, reviewCount }));
+  const ov = S.overall(qs, h);
+  mount(V.homeScreen({
+    counts: data.meta().counts, stats, resume,
+    reviewCount: S.wrongList(qs, h).length, flaggedCount: S.flaggedList(qs, h).length,
+    streak: S.streak(store.getActivity()), dday: ddayFrom(store.getSettings().examDate),
+    total: ov.total, seen: ov.seen,
+  }));
 }));
+route('/stats', () => ensureLoaded(() => {
+  const qs = data.allQuestions(), h = store.getHistory();
+  mount(V.statsScreen({ ov: S.overall(qs, h), dstats: S.domainStats(qs, h), weak: S.weakTopics(qs, h), streak: S.streak(store.getActivity()) }));
+}));
+route('/settings', () => mount(V.settingsScreen({ settings: store.getSettings() })));
 route('/study/:domain', (p) => ensureLoaded(() => {
   const d = p.domain;
   const pool = d === 'all' ? data.allQuestions() : data.byDomain(Number(d));
@@ -136,6 +152,17 @@ route('/exam', () => ensureLoaded(() => {
 }));
 
 // ---------- 이벤트 위임 ----------
+app.addEventListener('change', (e) => {
+  const el = e.target.closest('[data-action]'); if (!el) return;
+  if (el.dataset.action === 'set-examdate') { store.patchSettings({ examDate: el.value }); }
+  else if (el.dataset.action === 'set-setsize') { store.patchSettings({ setSize: Number(el.value) }); }
+  else if (el.dataset.action === 'import') {
+    const file = el.files[0]; if (!file) return;
+    const r = new FileReader();
+    r.onload = () => { try { store.importData(JSON.parse(r.result)); alert('가져오기 완료'); go('#/'); resolve(); } catch (err) { alert('가져오기 실패: ' + err.message); } };
+    r.readAsText(file);
+  }
+});
 app.addEventListener('submit', async (e) => {
   if (e.target.closest('[data-action="unlock"]')) {
     e.preventDefault();
@@ -160,6 +187,9 @@ app.addEventListener('click', (e) => {
     case 'resume-study': run = store.getSession('study'); if (run) renderRunner(); else go('#/'); break;
     case 'resume-exam': exam = store.getSession('exam'); if (exam) { startTimer(); renderExam(); } else go('#/'); break;
     case 'start-review': { const items = S.wrongList(data.allQuestions(), store.getHistory()); if (items.length) buildRunner('review', items, '오답', null); break; }
+    case 'start-flagged': { const items = S.flaggedList(data.allQuestions(), store.getHistory()); if (items.length) buildRunner('flagged', items, '플래그', null); else go('#/'); break; }
+    case 'export': { const blob = new Blob([JSON.stringify(store.exportData(), null, 2)], { type: 'application/json' }); const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `cisa-prep-backup-${new Date().toISOString().slice(0, 10)}.json`; link.click(); URL.revokeObjectURL(url); break; }
+    case 'reset': if (confirm('학습 이력을 전부 삭제할까요? 되돌릴 수 없습니다.')) { store.resetAll(); go('#/'); resolve(); } break;
     case 'start-exam': buildExam(); break;
     case 'exam-answer': exam.answers[exam.ids[exam.pos]] = Number(el.dataset.disp); store.saveSession('exam', exam); renderExam(); break;
     case 'exam-nav': exam.pos = Number(el.dataset.idx); renderExam(); break;
@@ -172,3 +202,8 @@ app.addEventListener('click', (e) => {
 
 applyTheme();
 start();
+
+// PWA: 서비스워커 등록 (오프라인 — 전철 터널 대응)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
