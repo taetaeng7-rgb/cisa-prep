@@ -1,5 +1,6 @@
 // sw.js — 오프라인 캐시(앱셸 + 암호문 번들). 평문은 캐시하지 않음(§5.5).
-const CACHE = 'cisa-prep-v1';
+// v2: 네트워크 우선(온라인이면 항상 최신, 오프라인이면 캐시) — 번들 갱신이 즉시 반영되도록
+const CACHE = 'cisa-prep-v2';
 const ASSETS = [
   './', './index.html', './css/style.css', './manifest.webmanifest', './icon.svg',
   './js/app.js', './js/config.js', './js/crypto.js', './js/data.js', './js/engine.js',
@@ -14,10 +15,12 @@ self.addEventListener('activate', (e) => {
 });
 self.addEventListener('fetch', (e) => {
   if (e.request.method !== 'GET') return;
-  // 앱셸·번들: 캐시 우선(오프라인), 네트워크 폴백
-  e.respondWith(caches.match(e.request).then((hit) => hit || fetch(e.request).then((res) => {
-    const copy = res.clone();
-    caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
-    return res;
-  }).catch(() => hit)));
+  // 네트워크 우선: 성공 시 캐시 갱신, 실패(터널·오프라인) 시 캐시 폴백
+  e.respondWith(
+    fetch(e.request).then((res) => {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put(e.request, copy)).catch(() => {});
+      return res;
+    }).catch(() => caches.match(e.request))
+  );
 });
