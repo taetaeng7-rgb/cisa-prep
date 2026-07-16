@@ -148,3 +148,37 @@ th{background:var(--surface2)}
 .reader blockquote{margin:0 0 12px;padding:10px 14px;background:var(--surface);border-left:3px solid var(--primary);border-radius:0 8px 8px 0;color:var(--muted)}
 .reader-title{font-size:16px;flex:1;margin:0 8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .sec-item{display:block;width:100%;text-align:left;font-size:15px}
+
+/* 개념 카드 v2 */
+.axiom-card{display:block;width:calc(100% - 32px);margin:4px 16px 14px;padding:14px 16px;background:color-mix(in srgb,#D97706 12%,var(--surface));border:1px solid color-mix(in srgb,#D97706 40%,var(--line));border-radius:12px;text-align:left;font-size:14px;line-height:1.5}
+.cgroup{border-bottom:1px solid var(--line)}
+.cgroup summary{display:flex;justify-content:space-between;align-items:center;padding:15px 6px;font-weight:700;cursor:pointer;list-style:none;position:sticky;top:0;background:var(--bg);z-index:2}
+.cgroup summary::-webkit-details-marker{display:none}
+.cgroup summary::before{content:'▸';margin-right:8px;color:var(--muted);transition:transform .15s}
+.cgroup[open] summary::before{transform:rotate(90deg)}
+.cgroup .prog{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;font-weight:600}
+.citem{display:flex;align-items:center;gap:12px;width:100%;min-height:56px;padding:10px 6px;text-align:left;border-top:1px solid var(--line);color:var(--muted)}
+.citem-body{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.citem-t{color:var(--text);font-weight:600;font-size:15px}
+.citem-one{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--line);flex-shrink:0}
+.dot.on{background:var(--dc)}
+/* 카드 리더 */
+.card-reader{padding:16px 20px 96px}
+.cstrip{border-left:4px solid;background:var(--surface);border-radius:0 12px 12px 0;padding:12px 14px;font-size:16px;font-weight:700;line-height:1.6;margin-bottom:14px}
+.cbody{font-size:15.5px;line-height:1.75;word-break:keep-all}
+.cbody ul,.cbody ol{margin:0 0 12px;padding-left:20px}
+.cbody li{margin:.45em 0}
+.cbody li::marker{color:var(--domain,var(--primary))}
+.cbody b,.hl{background:color-mix(in srgb,var(--domain,var(--primary)) 14%,transparent);padding:0 .15em;border-radius:3px;font-weight:700}
+.ckey{background:var(--surface2);border-radius:10px;padding:10px 14px;font-size:14.5px;margin:10px 0;font-weight:600}
+.cpin{display:flex;gap:8px;background:color-mix(in srgb,#D97706 13%,var(--surface));border:1px solid color-mix(in srgb,#D97706 35%,var(--line));border-radius:10px;padding:11px 14px;font-size:14.5px;line-height:1.55;margin:8px 0}
+.ctopics{margin:14px 0 4px;display:flex;gap:6px;flex-wrap:wrap}
+.pager{display:flex;gap:8px;margin:24px 0 8px}
+.pager button{flex:1;min-height:64px;padding:10px 14px;border:1px solid var(--line);border-radius:12px;display:flex;flex-direction:column;justify-content:center;gap:2px;text-align:left;background:var(--surface)}
+.pager .dir{font-size:12px;color:var(--muted)}
+.pager .pt{font-weight:700;font-size:14px}
+.pager .pone{font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* 오답→개념 링크 */
+.clinks{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}
+.clink{background:color-mix(in srgb,var(--primary) 10%,var(--surface));border:1px solid color-mix(in srgb,var(--primary) 35%,var(--line));color:var(--primary);border-radius:20px;padding:7px 13px;font-size:13.5px;font-weight:600}

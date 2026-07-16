@@ -21,10 +21,15 @@ function applyTheme() {
 }
 
 // ---------- 언록 게이트 ----------
+let _prefetched = false;
+function prefetchConcepts() { // 오답→개념 링크가 즉시 뜨도록 백그라운드 선로드
+  if (_prefetched) return; _prefetched = true;
+  data.loadConcepts().catch(() => { _prefetched = false; });
+}
 async function ensureLoaded(render) {
-  if (data.isLoaded()) return render();
+  if (data.isLoaded()) { prefetchConcepts(); return render(); }
   try {
-    if (await data.tryAutoUnlock()) return render();
+    if (await data.tryAutoUnlock()) { prefetchConcepts(); return render(); }
   } catch (e) { return mount(V.errorScreen('데이터를 불러오지 못했습니다. 새로고침 해주세요.')); }
   mount(V.unlockScreen()); // 캐시 없음 → 패스프레이즈 요청
 }
@@ -42,7 +47,8 @@ function buildRunner(kind, pool, label, domain) {
 function renderRunner() {
   const q = data.byId(run.ids[run.pos]);
   const flagged = store.getHistory()[q.id]?.flag;
-  mount(V.questionCard({ q, order: run.orders[q.id], pos: run.pos, size: run.ids.length, chosen: run.chosen, flagged, label: run.label }));
+  const conceptLinks = run.chosen != null ? conceptLinksFor(q) : []; // 채점 후에만 노출
+  mount(V.questionCard({ q, order: run.orders[q.id], pos: run.pos, size: run.ids.length, chosen: run.chosen, flagged, label: run.label, conceptLinks }));
 }
 function answer(disp) {
   if (run.chosen != null) return;
@@ -134,23 +140,45 @@ route('/stats', () => ensureLoaded(() => {
   mount(V.statsScreen({ ov: S.overall(qs, h), dstats: S.domainStats(qs, h), weak: S.weakTopics(qs, h), streak: S.streak(store.getActivity()) }));
 }));
 route('/settings', () => mount(V.settingsScreen({ settings: store.getSettings() })));
-// 개념(RM) 리더 — 문항 번들 언록 후 같은 키로 지연 로드
+// 개념 카드 v2 — 문항 번들 언록 후 같은 키로 지연 로드
 async function ensureConcepts(render) {
   return ensureLoaded(async () => {
     try { await data.loadConcepts(); render(); }
     catch (e) { mount(V.errorScreen(e.message === 'NO_CONCEPTS' ? '개념 자료가 아직 없습니다.' : '개념 자료를 불러오지 못했습니다 — 새로고침 해주세요.')); }
   });
 }
-route('/concepts', () => ensureConcepts(() => mount(V.conceptChapters({ chapters: data.concepts().chapters }))));
+route('/concepts', () => ensureConcepts(() => mount(V.conceptChapters({ chapters: data.concepts().chapters, readSet: store.getReadSet() }))));
+route('/concepts/axioms', () => ensureConcepts(() => mount(V.conceptAxioms({ axioms: data.concepts().axioms || '' }))));
 route('/concepts/:ch', (p) => ensureConcepts(() => {
   const chapter = data.concepts().chapters.find((c) => c.ch === Number(p.ch));
-  chapter ? mount(V.conceptSections({ chapter })) : go('#/concepts');
+  if (!chapter) return go('#/concepts');
+  const readSet = store.getReadSet();
+  // 마지막 읽던 그룹만 펼침(없으면 첫 미완료 그룹)
+  let openIdx = chapter.groups.findIndex((g) => g.cards.some((c) => !readSet.has(`${chapter.ch}|${c.t}`)));
+  if (openIdx < 0) openIdx = 0;
+  mount(V.conceptGroups({ chapter, readSet, openIdx }));
 }));
-route('/concepts/:ch/:idx', (p) => ensureConcepts(() => {
+route('/concepts/:ch/:gi/:ci', (p) => ensureConcepts(() => {
   const chapter = data.concepts().chapters.find((c) => c.ch === Number(p.ch));
-  const idx = Number(p.idx);
-  chapter && chapter.sections[idx] ? mount(V.conceptReader({ chapter, idx })) : go('#/concepts');
+  const gi = Number(p.gi), ci = Number(p.ci);
+  const card = chapter?.groups[gi]?.cards[ci];
+  if (!card) return go('#/concepts');
+  store.markRead(`${chapter.ch}|${card.t}`); // 열람 = 읽음
+  mount(V.conceptCard({ chapter, gi, ci }));
 }));
+
+// 오답→개념: 문항 토픽과 일치하는 카드 링크 (개념 번들 로드된 경우만)
+function conceptLinksFor(q) {
+  const c = data.concepts();
+  if (!c || !q.topic) return [];
+  const chapter = c.chapters.find((x) => x.ch === q.domain);
+  if (!chapter) return [];
+  const out = [];
+  chapter.groups.forEach((g, gi) => g.cards.forEach((card, ci) => {
+    if (card.topics?.includes(q.topic)) out.push({ href: `#/concepts/${chapter.ch}/${gi}/${ci}`, label: card.t });
+  }));
+  return out.slice(0, 3);
+}
 route('/study/:domain', (p) => ensureLoaded(() => {
   const d = p.domain;
   const pool = d === 'all' ? data.allQuestions() : data.byDomain(Number(d));

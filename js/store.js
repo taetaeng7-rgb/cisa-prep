@@ -22,6 +22,10 @@ export function toggleFlag(id) {
 }
 export const getActivity = () => get('activity', {}); // { 'YYYY-MM-DD': 푼 문항수 }
 
+// 개념 카드 읽음 상태: { "ch|카드제목": ts }
+export const getReadSet = () => new Set(Object.keys(get('read', {})));
+export function markRead(key) { const r = get('read', {}); if (!r[key]) { r[key] = Date.now(); set('read', r); } }
+
 // 진행 중 세션
 export const getSession = (kind) => get('session.' + kind, null);
 export const saveSession = (kind, s) => set('session.' + kind, s);

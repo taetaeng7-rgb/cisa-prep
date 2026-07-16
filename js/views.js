@@ -64,38 +64,96 @@ export function renderMd(md) {
   return html;
 }
 
-export function conceptChapters({ chapters }) {
+// ---- 개념 카드 v2 ----
+// 카드 md 특수 패턴: 첫 줄 "🎯 " → 요약 스트립 / "🔑 " 줄 → 암기 칩 / "> 📌 " → 시험 콜아웃
+export function renderCard(md, color) {
+  const lines = String(md ?? '').split('\n');
+  let strip = '', body = [], pins = [], keys = [];
+  for (const line of lines) {
+    const t = line.trim();
+    if (!strip && t.startsWith('🎯')) { strip = t.replace(/^🎯\s*/, ''); continue; }
+    if (t.startsWith('🔑')) { keys.push(t.replace(/^🔑\s*/, '')); continue; }
+    const pin = t.match(/^>\s*📌\s*(.+)/);
+    if (pin) { pins.push(pin[1]); continue; }
+    body.push(line);
+  }
+  const inline = (s) => esc(s).replace(/\*\*([^*]+)\*\*/g, '<b class="hl">$1</b>');
+  return `
+    ${strip ? `<div class="cstrip" style="border-color:${color}">${inline(strip)}</div>` : ''}
+    <div class="cbody">${renderMd(body.join('\n'))}</div>
+    ${keys.map((k) => `<div class="ckey">🔑 ${inline(k)}</div>`).join('')}
+    ${pins.map((p) => `<div class="cpin">⚡ <span>${inline(p)}</span></div>`).join('')}`;
+}
+export const cardOneLiner = (md) => {
+  const m = String(md ?? '').split('\n').find((l) => l.trim().startsWith('🎯'));
+  return m ? m.trim().replace(/^🎯\s*/, '') : '';
+};
+
+export function conceptChapters({ chapters, readSet }) {
   const cards = [1, 2, 3, 4, 5].map((n) => {
     const c = chapters.find((x) => x.ch === n);
     const d = domainMeta(n);
-    return c
-      ? `<button class="dcard" data-action="go" data-href="#/concepts/${n}">
-          <span class="dtag" style="background:${d.color}">D${n}</span>
-          <span class="dname">${esc(c.title)}</span>
-          <span class="dmeta">${c.sections.length}개 섹션 · Review Manual Ch.${n}</span></button>`
-      : `<button class="dcard off"><span class="dtag" style="background:${d.color}">D${n}</span>
-          <span class="dname">${esc(d.name)}</span><span class="dmeta">추출 예정</span></button>`;
+    if (!c) return `<button class="dcard off"><span class="dtag" style="background:${d.color}">D${n}</span>
+        <span class="dname">${esc(d.name)}</span><span class="dmeta">준비 중</span></button>`;
+    const total = c.groups.reduce((s, g) => s + g.cards.length, 0);
+    const read = c.groups.reduce((s, g) => s + g.cards.filter((x) => readSet.has(`${n}|${x.t}`)).length, 0);
+    return `<button class="dcard" data-action="go" data-href="#/concepts/${n}">
+        <span class="dtag" style="background:${d.color}">D${n}</span>
+        <span class="dname">${esc(c.title)}</span>
+        <span class="dmeta">카드 ${total}개 · 읽음 ${read}</span>
+        <span class="bar"><span style="width:${total ? Math.round((read / total) * 100) : 0}%;background:${d.color}"></span></span></button>`;
   }).join('');
-  return `<header class="top"><h1>개념 (Review Manual)</h1></header>
-    <main class="home"><div class="dgrid">${cards}</div>
-    <p class="muted small" style="padding:0 16px">개인 학습용 참고 자료입니다.</p></main>${tabbar('concepts')}`;
+  return `<header class="top"><h1>개념 카드</h1></header>
+    <main class="home">
+      <button class="axiom-card" data-action="go" data-href="#/concepts/axioms">⚡ <b>시험 공리</b> — BEST/FIRST를 가르는 공통 판단 기준 <span class="muted">›</span></button>
+      <div class="dgrid">${cards}</div>
+      <p class="muted small" style="padding:8px 16px 0">카드 1장 = 개념 1개 = 1~2분. 개인 학습용.</p>
+    </main>${tabbar('concepts')}`;
 }
 
-export function conceptSections({ chapter }) {
-  const items = chapter.sections.map((s, i) =>
-    `<button class="ritem sec-item" data-action="go" data-href="#/concepts/${chapter.ch}/${i}">${esc(s.t || `섹션 ${i + 1}`)}</button>`).join('');
-  return `<header class="top"><button class="ghost" data-action="go" data-href="#/concepts">‹</button><h1>Ch.${chapter.ch} ${esc(chapter.title)}</h1></header>
-    <main class="review"><div class="rlist">${items}</div></main>${tabbar('concepts')}`;
+export function conceptAxioms({ axioms }) {
+  return `<header class="top"><button class="ghost" data-action="go" data-href="#/concepts">‹</button><h1>⚡ 시험 공리</h1></header>
+    <main class="reader" data-domain-color="#D97706">${renderCard(axioms, '#D97706')}</main>${tabbar('concepts')}`;
 }
 
-export function conceptReader({ chapter, idx }) {
-  const s = chapter.sections[idx];
-  const nav = `<div class="runner-foot two">
-      ${idx > 0 ? `<button class="ghost" data-action="go" data-href="#/concepts/${chapter.ch}/${idx - 1}">← 이전</button>` : '<span></span>'}
-      ${idx + 1 < chapter.sections.length ? `<button class="ghost" data-action="go" data-href="#/concepts/${chapter.ch}/${idx + 1}">다음 →</button>` : '<span></span>'}
+export function conceptGroups({ chapter, readSet, openIdx }) {
+  const d = domainMeta(chapter.ch);
+  const groups = chapter.groups.map((g, gi) => {
+    const read = g.cards.filter((c) => readSet.has(`${chapter.ch}|${c.t}`)).length;
+    const items = g.cards.map((c, ci) => `
+      <button class="citem" data-action="go" data-href="#/concepts/${chapter.ch}/${gi}/${ci}">
+        <span class="dot${readSet.has(`${chapter.ch}|${c.t}`) ? ' on' : ''}" style="--dc:${d.color}"></span>
+        <span class="citem-body"><span class="citem-t">${esc(c.t)}</span>
+        <span class="citem-one">${esc(cardOneLiner(c.md).slice(0, 60))}</span></span>›</button>`).join('');
+    return `<details class="cgroup"${gi === openIdx ? ' open' : ''} data-group="${gi}">
+      <summary><span>${esc(g.g)}</span><span class="prog">${read}/${g.cards.length}</span></summary>
+      <div>${items}</div></details>`;
+  }).join('');
+  return `<header class="top"><button class="ghost" data-action="go" data-href="#/concepts">‹</button>
+      <h1><span class="dtag sm" style="background:${d.color}">D${chapter.ch}</span> ${esc(chapter.title)}</h1></header>
+    <main class="review">${groups}</main>${tabbar('concepts')}`;
+}
+
+export function conceptCard({ chapter, gi, ci }) {
+  const d = domainMeta(chapter.ch);
+  const g = chapter.groups[gi];
+  const c = g.cards[ci];
+  // 이전/다음: 그룹 경계 넘어 연속
+  const flat = [];
+  chapter.groups.forEach((gg, a) => gg.cards.forEach((cc, b) => flat.push([a, b, cc])));
+  const pos = flat.findIndex(([a, b]) => a === gi && b === ci);
+  const prev = flat[pos - 1], next = flat[pos + 1];
+  const pager = `<div class="pager">
+      ${prev ? `<button data-action="go" data-href="#/concepts/${chapter.ch}/${prev[0]}/${prev[1]}"><span class="dir">‹ 이전</span><span class="pt">${esc(prev[2].t)}</span></button>` : '<span></span>'}
+      ${next ? `<button data-action="go" data-href="#/concepts/${chapter.ch}/${next[0]}/${next[1]}"><span class="dir">다음 ›</span><span class="pt">${esc(next[2].t)}</span><span class="pone">${esc(cardOneLiner(next[2].md).slice(0, 40))}</span></button>` : '<span></span>'}
     </div>`;
-  return `<header class="top"><button class="ghost" data-action="go" data-href="#/concepts/${chapter.ch}">‹</button><h1 class="reader-title">${esc(s.t || `Ch.${chapter.ch}`)}</h1></header>
-    <main class="reader">${renderMd(s.md)}${nav}</main>${tabbar('concepts')}`;
+  return `<header class="top"><button class="ghost" data-action="go" data-href="#/concepts/${chapter.ch}">‹</button>
+      <h1 class="reader-title">${esc(c.t)}</h1><span class="chip">${pos + 1}/${flat.length}</span></header>
+    <main class="reader card-reader" style="--domain:${d.color}">
+      ${renderCard(c.md, d.color)}
+      ${c.topics?.length ? `<div class="ctopics">${c.topics.map((t) => `<span class="chip">${esc(t)}</span>`).join('')}</div>` : ''}
+      ${pager}
+    </main>${tabbar('concepts')}`;
 }
 
 export function unlockScreen(errMsg) {
@@ -182,7 +240,7 @@ export function settingsScreen({ settings }) {
 }
 
 // 학습/오답 러너의 문항 카드
-export function questionCard({ q, order, pos, size, chosen, flagged, label }) {
+export function questionCard({ q, order, pos, size, chosen, flagged, label, conceptLinks = [] }) {
   const graded = chosen != null;
   const opts = order.map((origIdx, disp) => {
     const c = q.choices[origIdx];
@@ -200,6 +258,7 @@ export function questionCard({ q, order, pos, size, chosen, flagged, label }) {
       ${renderRich(q.explanation.ko)}
       ${q.explanationPlus ? `<details class="plus"><summary>📘 보강 해설 (Review Manual)</summary>${renderRich(q.explanationPlus.ko)}<div class="ref">근거: ${esc(q.explanationPlus.ref || 'RM27')}</div></details>` : ''}
       <div class="ref">📄 ${esc(q.ref)}${q.srcId ? ` · ${esc(q.srcId)}` : ''}</div>
+      ${conceptLinks.length ? `<div class="clinks">${conceptLinks.map((l) => `<button class="clink" data-action="go" data-href="${l.href}">📖 ${esc(l.label)}</button>`).join('')}</div>` : ''}
     </div>
     <div class="runner-foot"><button class="next" data-action="next">${pos + 1 < size ? '다음 →' : '결과 보기'}</button></div>` : '';
   return `<header class="runner-top">
