@@ -147,10 +147,13 @@ export function conceptCard({ chapter, gi, ci }) {
       ${prev ? `<button data-action="go" data-href="#/concepts/${chapter.ch}/${prev[0]}/${prev[1]}"><span class="dir">‹ 이전</span><span class="pt">${esc(prev[2].t)}</span></button>` : '<span></span>'}
       ${next ? `<button data-action="go" data-href="#/concepts/${chapter.ch}/${next[0]}/${next[1]}"><span class="dir">다음 ›</span><span class="pt">${esc(next[2].t)}</span><span class="pone">${esc(cardOneLiner(next[2].md).slice(0, 40))}</span></button>` : '<span></span>'}
     </div>`;
+  const detail = c.detail
+    ? `<details class="cdetail" open><summary>📖 상세 학습</summary><div class="cdetail-body">${renderMd(c.detail)}</div></details>` : '';
   return `<header class="top"><button class="ghost" data-action="go" data-href="#/concepts/${chapter.ch}">‹</button>
       <h1 class="reader-title">${esc(c.t)}</h1><span class="chip">${pos + 1}/${flat.length}</span></header>
     <main class="reader card-reader" style="--domain:${d.color}">
       ${renderCard(c.md, d.color)}
+      ${detail}
       ${c.topics?.length ? `<div class="ctopics">${c.topics.map((t) => `<span class="chip">${esc(t)}</span>`).join('')}</div>` : ''}
       ${pager}
     </main>${tabbar('concepts')}`;
